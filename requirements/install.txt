@@ -1,0 +1,12 @@
+#use specific pip version for dependencies to work nicely
+pip==22.2.0
+pip-tools
+
+#protoc install.
+requests
+
+#install requirements. 
+invoke==2.2.0
+wheel
+
+galaxy.plugin.api==0.69

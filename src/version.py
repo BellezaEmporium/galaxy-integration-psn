@@ -1,7 +1,16 @@
-__version__ = "0.35"
+__version__ = "0.37"
 
 __changelog__ = {
-    "unreleased": """
+    "unreleased": """,
+    """,
+    "0.37": """
+        - Add playwright browser automation for retrieving npsso token, replacing the previous manual process; should fix authentication issues for good and make it more user-friendly
+        - Fixed GraphQL queries for fetching user information & games
+    """,
+    "0.36": """
+        - Simplified PS Plus games retrieval
+        - Optimized code
+        - Tentative of automatizing the npsso retrieval process
     """,
     "0.35": """
         - Fix pagination of fetched purchased games

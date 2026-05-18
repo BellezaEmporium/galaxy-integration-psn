@@ -1,50 +1,47 @@
-import json
 import logging
-from typing import List, Dict
+from typing import List, Dict, Any
+import random
 
-from bs4 import BeautifulSoup
 from galaxy.api.errors import UnknownBackendResponse
 from galaxy.api.types import SubscriptionGame
 
-
 logger = logging.getLogger(__name__)
 
+BASIC_LIST_PSPLUS = "https://www.playstation.com/bin/imagic/gameslist?locale=en-us&categoryList=plus-games-list"
+BASIC_LIST_UBI = "https://www.playstation.com/bin/imagic/gameslist?locale=en-us&categoryList=ubisoft-classics-list"
+BASIC_LIST_PSPLUS_CLASSICS = "https://www.playstation.com/bin/imagic/gameslist?locale=en-us&categoryList=plus-classics-list"
+BASIC_LIST_PSPLUS_MONTHLY = "https://www.playstation.com/bin/imagic/gameslist?locale=en-us&categoryList=plus-monthly-games-list"
 
 class PSNGamesParser:
-
-    _SUBSCRIBED_GAMES_PAGINATOR_CSS_CLASS = 'psw-strand-scroller'
-    _SUBSCRIBED_GAMES_CSS_CLASS = 'ems-sdk-product-tile-link'
-    _GAME_DATA_TAG = 'data-telemetry-meta'
-
-    def parse(self, response) -> List[SubscriptionGame]:
-        try:
-            games = self._subscription_games(response)
-        except NotFoundSubscriptionPaginator:
-            raise UnknownBackendResponse(f"HTML TAG: {self._SUBSCRIBED_GAMES_PAGINATOR_CSS_CLASS} was not found in response.")
-        else:
-            return [
-                SubscriptionGame(game_id=game['titleId'], game_title=game['name'])
-                for game in games if game.get('name') and game.get('titleId') and not game['name'].startswith('PlayStation')
-            ]
-
-    def _subscription_games(self, response: str) -> List[Dict]:
-        """Scrapes all PS Plus Monthly games from https://store.playstation.com/subscriptions"""
-
-        parsed_html = BeautifulSoup(response, 'html.parser')
-        paginator = parsed_html.find("ul", class_=self._SUBSCRIBED_GAMES_PAGINATOR_CSS_CLASS)
-        if not paginator:
-            raise NotFoundSubscriptionPaginator
-        logger.debug("HTML response slice of %s tag: \n%s" % (self._SUBSCRIBED_GAMES_PAGINATOR_CSS_CLASS, paginator.decode_contents()))
-        games = paginator.find_all("a", class_=self._SUBSCRIBED_GAMES_CSS_CLASS)
-        result = []
-        for game in games:
+    def __init__(self, http_client=None):
+        self._http_client = http_client
+        
+    async def parse(self) -> List[SubscriptionGame]:
+        results: List[SubscriptionGame] = []
+        urls = [BASIC_LIST_PSPLUS, BASIC_LIST_UBI, BASIC_LIST_PSPLUS_CLASSICS, BASIC_LIST_PSPLUS_MONTHLY]
+        random.shuffle(urls)
+        
+        for url in urls:
             try:
-                game_data = getattr(game, 'attrs', {}).get(self._GAME_DATA_TAG)
-                result.append(json.loads(game_data))
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.error(e)
-        return result
-
-
-class NotFoundSubscriptionPaginator(Exception):
-    pass
+                if self._http_client:
+                    response = await self._http_client.get(url, get_json=True)
+                    data: Dict[str, Any] = response
+                else:
+                    import requests
+                    response = requests.get(url)
+                    response.raise_for_status()
+                    data: Dict[str, Any] = response.json()
+                    
+                catalogs: List[Dict[str, Any]] = data.get("gamesList", [])
+                for catalog in catalogs:
+                    games: List[Dict[str, Any]] = catalog.get("games", [])
+                    for game in games:
+                        cid = game.get("conceptId")
+                        name = game.get("name")
+                        if cid and name:
+                            results.append(SubscriptionGame(game_id=str(cid), game_title=name))
+            except Exception as e:
+                logger.error(f"Error fetching from {url}: {e}")
+                raise UnknownBackendResponse()
+                
+        return results

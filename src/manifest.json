@@ -1,0 +1,12 @@
+{
+    "name": "Playstation Network",
+    "platform": "psn",
+    "guid": "57873988-d401-437a-8c9c-fe1ed6e3dbce",
+    "version": "0.37",
+    "description": "PSN plugin for GOG Galaxy 2.0",
+    "author": "Friends of Galaxy, Atlas1001, BellezaEmporium",
+    "email": "lanesh4d0w@gmail.com",
+    "url": "https://github.com/BellezaEmporium/galaxy-integration-psn",
+    "update_url": "https://raw.githubusercontent.com/BellezaEmporium/galaxy-integration-psn/current_version.json",
+    "script": "plugin.py"
+}
